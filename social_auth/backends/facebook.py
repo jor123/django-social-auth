@@ -103,7 +103,8 @@ class FacebookAuth(BaseOAuth2):
             })
             try:
                 response = cgi.parse_qs(dsa_urlopen(url).read())
-            except HTTPError:
+            except HTTPError, e:
+                _log_facebook_http_error(e)
                 raise AuthFailed(self, 'There was an error authenticating '
                                        'the app')
 
@@ -190,6 +191,13 @@ def load_signed_request(signed_request, api_secret=None):
             return data
     except ValueError:
         pass  # ignore if can't split on dot
+
+
+def _log_facebook_http_error(http_error):
+    if 400 == http_error.code and 'javascript' == http_error.info().subtype:
+        as_json = simplejson.load(http_error)
+        pretty = simplejson.dumps(as_json, sort_keys=True, indent=4)
+        log('error', 'Facebook HTTP bad request content: %s', pretty)
 
 
 # Backend definition
